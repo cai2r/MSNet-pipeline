@@ -14,7 +14,7 @@
     - MSNet weights: 
 4. Run `scripts/check_repo_setup.sh` to catch any issues with your file setup in the repository.
 
-### Running the script
+### Running the pipeline
 
 1. Your input data for the full pipeline should be raw DICOM files, placed `data/1-input/`
 2. `python3 -m src.run_pipeline` will run the pipeline.
