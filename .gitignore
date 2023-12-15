@@ -154,3 +154,9 @@ cython_debug/
 
 # do not save model weights
 src/models/msnet/model19_prepost4s
+
+# do not save templates
+templates/
+
+# do not save data
+data/
