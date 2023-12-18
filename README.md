@@ -33,7 +33,7 @@ The MSNet-pipeline project provides a pipeline for executing the MSNet model [1]
     - `data/2-nifti/`: perfusion and diffusion NIfTis.
     - `data/3-coreg/`: The coregistered NIfTi T1, T1CE, T2, and flair.
     - `data/5-seg/`: contains NIfTi files of the segmentation masks
-    - `data/6-output/`: contains the NIfTi to DICOM conversions of diffusion, perfusion, T1, T1CE, T2, flair, T1CE with mask, flair with mask, and mask.
+    - `data/6-output/`: contains the NIfTi to DICOM conversions of diffusion, perfusion, T1, T1CE, T2, flair, T1CE with mask, flair with mask, and mask. (An easy tool to view these DICOM files is [Weasis](https://weasis.org/en/index.html))
 
 ## Citations
 
