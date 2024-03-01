@@ -23,7 +23,7 @@ def run_pipeline(base_dir):
     if not os.path.exists(nifti_dir):
         os.makedirs(nifti_dir)
     if len(os.listdir(nifti_dir)) == 0:
-            convert_dicom_to_nifti(input_dir, nifti_dir)
+        convert_dicom_to_nifti(input_dir, nifti_dir)
 
     # coregister
     if not os.path.exists(coreg_dir):
@@ -65,4 +65,5 @@ def run_pipeline(base_dir):
     print("RUNTIME:", end - start)
 
 if __name__ == "__main__":
-    run_pipeline("/home/amritha/workspace/coreg-skull-strip-testing/data/")
+    #run_pipeline("/home/amritha/workspace/coreg-skull-strip-testing/data/")
+    run_pipeline("/home/vagrant/MSNet-pipeline/data/")
