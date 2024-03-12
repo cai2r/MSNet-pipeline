@@ -52,6 +52,9 @@ ENV LD_LIBRARY_PATH="/opt/ants/lib:$LD_LIBRARY_PATH"
 RUN cd /tmp/ants/build/ANTS-build \
     && cmake --build . --target test
 
+
+RUN chmod -R 777 /tmp/ants
+RUN chmod -R 777 /opt/ants
 #FROM ubuntu:bionic-20220427
 #COPY --from=builder /opt/ants /opt/ants
 #COPY --from=builder /opt/ants /opt/ants
