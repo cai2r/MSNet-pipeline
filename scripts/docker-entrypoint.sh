@@ -7,6 +7,6 @@ cp -r $MERCURE_IN_DIR/* data/1-input/
 
 conda run -n glioma-seg-37 python3 -m src.run_pipeline \
 
-cp -r data/6-output/* $MERCURE_OUT_DIR/
+cp -rp data/6-output/* $MERCURE_OUT_DIR/
 
 echo "-- Done."

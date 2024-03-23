@@ -1,6 +1,6 @@
 FROM ubuntu:bionic-20220427
 #as builder
-
+RUN chmod 777 /
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
                     apt-transport-https \
@@ -60,6 +60,7 @@ RUN chmod -R 777 /opt/ants
 #COPY --from=builder /opt/ants /opt/ants
 
 ADD . /
+
 RUN chmod -R 777 /data
 RUN chmod -R 777 /scripts
 RUN chmod -R 777 /src
@@ -103,6 +104,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 ADD ./src/build_tools/misc_io.py /opt/conda/envs/glioma-seg-37/lib/python3.7/site-packages/niftynet/io/misc_io.py
+RUN chmod 777 /opt/conda/envs/glioma-seg-37/lib/python3.7/site-packages/niftynet/io/misc_io.py
 # manage niftynet specific set up issues
 RUN mkdir /.niftynet && chmod -R 777 /.niftynet \
     && mkdir /niftynet && chmod -R 777 /niftynet
@@ -119,5 +121,5 @@ RUN pip3 uninstall tensorflow-gpu tensorflow
 #RUN pip3 install --user tensorflow-gpu~=1.12
 RUN pip3 install tensorflow-gpu~=1.12
 
-
+RUN chmod -R 777 /tmp
 CMD ["/scripts/docker-entrypoint.sh"]

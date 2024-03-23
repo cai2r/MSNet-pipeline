@@ -69,7 +69,15 @@ def run_pipeline(base_dir):
         # select a DICOM file to use as a template
         dcm_source_file = os.listdir(input_dir)[0]
         dcm_source_file = os.path.join(input_dir, dcm_source_file)
+        print("postprocessing started")
         postprocess(nifti_dir, coreg_dir, seg_dir, output_dir, dcm_source_file, tumor_volume)
+
+    #set permissions for output files
+    for root, dirs, files in os.walk(output_dir):
+        for d in dirs:
+            os.chmod(os.path.join(root, d), 0o777)
+        for f in files:
+            os.chmod(os.path.join(root, f), 0o777)
 
     end = time.time()
 

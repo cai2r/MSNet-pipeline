@@ -1,5 +1,6 @@
 import os
-
+import stat
+from pathlib import Path
 
 def ants_coreg(fixed_nifti, moving_nifti, setting):
     """Coregister two NIfTI files using ANTs.
@@ -27,6 +28,8 @@ def coreg(nifti_dir, coreg_dir):
     for modality in modalities:
         if modality == 't1ce':
             os.system(f"cp {os.path.join(nifti_dir, 'brain_t1ce.nii.gz')} {os.path.join(coreg_dir, 'brain_t1ce.nii.gz')}")
+            p = Path(os.path.join(coreg_dir, 'brain_t1ce.nii.gz'))
+            p.chmod(p.stat().st_mode | stat.S_IROTH | stat.S_IXOTH | stat.S_IWOTH)
         else:
             fixed_nifti = os.path.join(nifti_dir, 'brain_t1ce.nii.gz')
             moving_nifti = os.path.join(nifti_dir, f'brain_{modality}.nii.gz')
@@ -35,6 +38,8 @@ def coreg(nifti_dir, coreg_dir):
             # move coregistered file to coreg_dir
             registered_nifti = [file for file in os.listdir('.') if modality in file and file.endswith('_warped.nii.gz')][0]
             os.rename(registered_nifti, os.path.join(coreg_dir, f'brain_{modality}.nii.gz'))
+            p = Path(os.path.join(coreg_dir, f'brain_{modality}.nii.gz'))
+            p.chmod(p.stat().st_mode | stat.S_IROTH | stat.S_IXOTH | stat.S_IWOTH)
 
             # remove intermediate files
             os.system("rm *.nii.gz")
