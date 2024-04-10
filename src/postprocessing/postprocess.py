@@ -73,7 +73,7 @@ def arr2dicom(
      #--update
     ds.is_little_endian=True
     ds.is_implicit_VR=False
-    ds.is_original_encoding=False
+    #ds.is_original_encoding=False
 
     ds.add_new(0x00280006, 'US', 0)
     ds.fix_meta_info() 

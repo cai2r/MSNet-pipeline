@@ -61,6 +61,7 @@ RUN chmod -R 777 /opt/ants
 
 ADD . /
 
+RUN mkdir /data/1-input/
 RUN chmod -R 777 /data
 RUN chmod -R 777 /scripts
 RUN chmod -R 777 /src
