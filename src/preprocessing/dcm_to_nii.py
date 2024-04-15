@@ -1,8 +1,33 @@
 import os
-
+import sys
+import json
+from pathlib import Path
 from src.common.enums import modalities
 import nibabel as nib
 
+
+def set_modalities(in_folder, modalities=modalities):
+    # Load the task.json file, which contains the settings for the processing module
+    settings={}
+    try:
+        with open(Path(in_folder) / "task.json", "r") as json_file:
+            task = json.load(json_file)
+    except Exception:
+        print("Error: Task file task.json not found")
+        sys.exit(1)
+     # Overwrite default modalities values with settings from the task file (if present)
+    if task.get("process", ""):
+        settings.update(task["process"].get("settings", {}))
+    # Get dcm2bids config and write configuration file
+    print(settings)
+    print(type(settings))
+    if "modalities" in settings:
+        print("user specified modalities found")
+        modalities_selected = settings["modalities"]
+    else:
+        print("No user specified modalities found, running with default values")
+        modalities_selected = modalities
+    return modalities_selected
 
 def dcm2niix_wrapper(dcm_dir, nii_dir):
     """Converts DICOM files to NIfTI using dcm2niix.
@@ -120,7 +145,9 @@ def convert_dicom_to_nifti(dcm_dir, nii_dir):
             modalities will be placed
 
     """
+    # check task file for user setting of modalities
+    specified_modalities = set_modalities(dcm_dir)
     # convert DICOM files to NIfTI
     dcm2niix_wrapper(dcm_dir, nii_dir)
     remove_nonstandard_modalities(nii_dir)
-    select_necessary_modalities(nii_dir)
+    select_necessary_modalities(nii_dir, specified_modalities)

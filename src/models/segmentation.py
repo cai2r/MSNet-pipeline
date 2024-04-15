@@ -1,6 +1,8 @@
 from pathlib import Path
 import os
 import csv
+import stat
+from pathlib import Path
 
 from src.models.msnet.inference import run_inference
 
@@ -8,12 +10,14 @@ def run_msnet_segmentation(input_dir, output_dir):
     
     if not os.path.exists(os.path.join(input_dir, "patient")):
         os.makedirs(os.path.join(input_dir, "patient"))
+        p = Path(os.path.join(input_dir, "patient"))
+        p.chmod(p.stat().st_mode | stat.S_IROTH | stat.S_IXOTH | stat.S_IWOTH)
     os.system(f"mv {input_dir}/*.nii.gz {input_dir}/patient/")
 
     config_file = Path("src/models/msnet/config/mercure_config.txt")
 
     tumor_volume = run_inference(input_dir, output_dir, config_file)
-
+    print("inference completed")
     os.system(f"mv {input_dir}/patient/*.nii.gz {input_dir}/")
 
     os.system(f"mv {output_dir}/patient/patient_seg_edema.nii.gz {output_dir}/seg_edema.nii.gz")
@@ -31,5 +35,5 @@ def run_msnet_segmentation(input_dir, output_dir):
         writer = csv.writer(f)
         for key, val in tumor_volume.items():
             writer.writerow([key, val])
-
+    print("inference outputs written")
     return tumor_volume

@@ -6,6 +6,8 @@ from enum import IntEnum
 from pathlib import Path
 from typing import Generator
 import os
+import stat
+from pathlib import Path
 
 import cv2
 import numpy as np
@@ -45,32 +47,42 @@ def arr2dicom(
     # adjust the shape of the DICOM image to match the masked slice
     ds.Rows = arr.shape[0]
     ds.Columns = arr.shape[1]
+    # adjust the expected range of pixels in the image data, we have normalized to 0-255
+    # this is information DICOM viewers use to adjust brightness/constrast for display
+    ds.WindowCenter = 128
+    ds.WindowWidth = 256
+    ds.ImageOrientationPatient = [1, 0, 0, 0, 1, 0]
+    # tag which slice in the volume we're dealing with
+    ds.ImagePositionPatient = [0, 0, slice_idx]
+    ds.InstanceNumber = slice_idx + 1
 
+    # specify transfer syntax to assign pixel data
+    ds.file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian
+    #ds.file_meta.TransferSyntaxUID = pydicom.uid.ImplicitVRLittleEndian
+     
     # assign values for a color DICOM instead of a grayscale
     ds.PhotometricInterpretation = "RGB"
     ds.SamplesPerPixel = 3
     ds.BitsAllocated = 8
     ds.BitsStored = 8
     ds.HighBit = 7
-    ds.PixelRepresentation = 0
-    ds.PlanarConfiguration = 0
+    #ds.PixelRepresentation = 0
+    #ds.PlanarConfiguration = 0
+    #--update
+    
+     #--update
+    ds.is_little_endian=True
+    ds.is_implicit_VR=False
+    #ds.is_original_encoding=False
 
-    # adjust the expected range of pixels in the image data, we have normalized to 0-255
-    # this is information DICOM viewers use to adjust brightness/constrast for display
-    ds.WindowCenter = 128
-    ds.WindowWidth = 256
-
-    # specify transfer syntax to assign pixel data
-    ds.file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian
+    ds.add_new(0x00280006, 'US', 0)
+    ds.fix_meta_info() 
+    
 
     # copy the array containing the masked slice image to pixel data
     ds.PixelData = arr.tobytes()
-    ds.ImageOrientationPatient = [1, 0, 0, 0, 1, 0]
-
-    # tag which slice in the volume we're dealing with
-    ds.ImagePositionPatient = [0, 0, slice_idx]
-    ds.InstanceNumber = slice_idx + 1
-
+    ds.ImageType = "DERIVED\\SECONDARY"
+    
     return ds
 
 
@@ -151,6 +163,8 @@ def nifti2dicom(
             ".dcm"
         )
         output_dicom_file.save_as(output_filename)
+        #p = Path(output_filename)
+        #p.chmod(p.stat().st_mode | stat.S_IROTH | stat.S_IXOTH | stat.S_IWOTH)
 
 
 def masked2dicom(
@@ -210,7 +224,8 @@ def masked2dicom(
             ".dcm"
         )
         output_dicom_file.save_as(output_filename)
-
+        #p = Path(output_filename)
+        #p.chmod(p.stat().st_mode | stat.S_IROTH | stat.S_IXOTH | stat.S_IWOTH)
 
 def merge3D_mask_arr(
     mask_arr: np.ndarray,
@@ -481,7 +496,7 @@ def postprocess(
     """
 
     mask_path = list(Path(mask_dir).glob("*_whole.nii.gz"))[0]
-
+    print("starting nifti to dicom")
     nifti2dicom(
         mask_path,
         dicom_source_file,
