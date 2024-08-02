@@ -24,6 +24,7 @@ The MSNet-pipeline project provides a pipeline for executing the MSNet model [1]
     - The ANTs skull stripping script requires open source brain templates that were released as part of the 2012 MICCAI Multi Atlas Challenge. You can download these templates at [this link](https://figshare.com/articles/dataset/ANTs_ANTsR_Brain_Templates/915436?file=3133832). Place the downloaded files into your `templates/` folder.
     - MSNet weights: ask a team member for the correct MSNet weights, and place these into the `src/models/msnet/model19_prepost4s/` folder.
 4. Run `scripts/check_repo_setup.sh` to catch any issues with your file setup in the repository.
+5. It may be necessary to copy the /src/build_tools/misc_io.py file over to your new environment, and reinstall correct tensorflow-gpu version (see Dockerfile for correct commands).
 
 ### Running the pipeline
 
