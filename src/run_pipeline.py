@@ -90,5 +90,5 @@ def run_pipeline(base_dir):
 
 if __name__ == "__main__":
     #run_pipeline("/home/amritha/workspace/coreg-skull-strip-testing/data/")
-    run_pipeline("/home/vagrant/MSNet-pipeline/data/")
-    #run_pipeline("/data/")
+    #run_pipeline("/home/vagrant/MSNet-pipeline/data/")
+    run_pipeline("/data/")
