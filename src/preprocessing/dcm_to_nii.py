@@ -92,11 +92,11 @@ def select_necessary_modalities(nii_dir, modalities=modalities):
     # get list of files for each modality
     files_per_modality = {}
     for mod in modalities.keys():
-        if mod == "diffusion":
-            files_per_modality[mod] = select_diffusion_file(nii_dir, bval=1000)
-            if len(files_per_modality[mod]) == 0:
-                files_per_modality[mod] = select_diffusion_file(nii_dir, bval=1500)
-        else:
+        # if mod == "diffusion":
+        #     files_per_modality[mod] = select_diffusion_file(nii_dir, bval=1000)
+        #     if len(files_per_modality[mod]) == 0:
+        #         files_per_modality[mod] = select_diffusion_file(nii_dir, bval=1500)
+        # else:
             files_per_modality[mod] = []
             for pattern in modalities[mod]:
                 for file in os.listdir(nii_dir):
@@ -127,6 +127,7 @@ def select_necessary_modalities(nii_dir, modalities=modalities):
                         break
 
             os.system(f"mv {nii_dir}/{nifti_to_keep} {nii_dir}/{mod_name}")
+            print(mod,nifti_to_keep,mod_name)
         else:
             print(f"WARNING: No files found for modality {mod}")
 

@@ -15,6 +15,7 @@ import pydicom
 from PIL import Image
 import nibabel as nib
 from scipy.ndimage import zoom
+import json
 
 from src.common.enums import BinaryMasksMSNet
 
@@ -173,9 +174,9 @@ def masked2dicom(
     dicom_path,
     output_dir,
     mask_values,
-    output_prefix,
-    tumor_volume,
-) -> None:
+    modality,
+    tumor_stats,
+) -> dict:
     """Converts a NIfTI file with the tumor segmentation mask overlapped into multiple DICOM files where each file
     corresponds to a slice.
 
@@ -194,10 +195,20 @@ def masked2dicom(
         DICOM file with the modality overlapped by the tumor segmentation mask.
 
     """
+    #TODO: need to add function to calculate mean ADC if modality = diffusion 
     mask_array = nib.load(mask_path).get_fdata()
     background_array = nib.load(background_file).get_fdata()
     dicom_file = pydicom.dcmread(dicom_path)
+    output_prefix = "masked_"+ modality
 
+    if modality=='diffusion' or modality=='perfusion':
+        tumor_stats["enhancing portion"]= round(np.mean(background_array[(mask_array == mask_values.ENHANCING_TUMOR.value) & (background_array > 0)]),3)
+        tumor_stats["total vasogenic edema volume"]= round(np.mean(background_array[(mask_array == mask_values.WHOLE_TUMOR.value) & (background_array > 0)]),3)
+        tumor_stats["non enhancing portion"]= round(np.mean(background_array[(mask_array == mask_values.TUMOR_CORE.value) & (background_array > 0)]),3)
+        if modality=='diffusion':
+            tumor_stats["unit"]= "1e-3 mm2/s"
+        if modality=='perfusion':
+            tumor_stats["unit"]= "ml/100ml"
     # reorient arrays to save DICOM slices in AXIAL orientation
     mask_array = np.rot90(mask_array, axes=(0, 2))
     mask_array = np.flip(mask_array, axis=(1, 2))
@@ -209,8 +220,8 @@ def masked2dicom(
     background_array = pad_nifti_data(background_array)
 
     # Create the template of the overlay
-    overlay = generate_overlay_arr(
-        tumor_volume, (background_array.shape[1], background_array.shape[2])
+    [stats_dict, overlay] = generate_overlay_arr(
+        tumor_stats, (background_array.shape[1], background_array.shape[2]), modality
     )
 
     # Generator of slices with the mask and template overlapping the background
@@ -226,6 +237,8 @@ def masked2dicom(
         output_dicom_file.save_as(output_filename)
         #p = Path(output_filename)
         #p.chmod(p.stat().st_mode | stat.S_IROTH | stat.S_IXOTH | stat.S_IWOTH)
+    
+    return stats_dict
 
 def merge3D_mask_arr(
     mask_arr: np.ndarray,
@@ -338,7 +351,7 @@ def normalize_background_arr(background_arr: np.ndarray, arr_min: int, arr_max: 
     return background_arr
 
 
-def generate_overlay_arr(tumor_volume: dict, slice_shape: tuple) -> np.ndarray:
+def generate_overlay_arr(tumor_stats: dict, slice_shape: tuple, modality):# -> tuple[dict, np.ndarray]:
     """Bitmaps the volumetric information into a overlay image.
 
     Args:
@@ -364,26 +377,52 @@ def generate_overlay_arr(tumor_volume: dict, slice_shape: tuple) -> np.ndarray:
     # text to display
     research_warning = ["FOR RESEARCH ONLY;", "REFER TO OFFICIAL REPORT FOR DETAILS"]
     legend_headers = "Legend"
-    edema_text = (
-        "Edema      "
-        + str(tumor_volume["total vasogenic edema volume"])
-        + "+/-6.3 "
-        + tumor_volume["unit"]
-    )
-    enhancing_text = (
-        "Enhancing  "
-        + str(tumor_volume["enhancing portion"])
-        + "+/-13.2 "
-        + tumor_volume["unit"]
-    )
-    non_enhancing_text = [
-        "Non-       "
-        + str(tumor_volume["non enhancing portion"])
-        + "+/-2.7 "
-        + tumor_volume["unit"],
-        "Enhancing",
-    ]
-
+    stats_d={}
+    if modality =='diffusion' or modality =='perfusion':
+        edema_text = (
+            "Edema      "
+            + str(tumor_stats["total vasogenic edema volume"])
+            + " "
+            +tumor_stats["unit"]
+        )
+        enhancing_text = (
+            "Enhancing  "
+            + str(tumor_stats["enhancing portion"])
+            + " "
+            + tumor_stats["unit"]
+        )
+        non_enhancing_text = [
+            "Non-       "
+            + str(tumor_stats["non enhancing portion"])
+            + " "
+            + tumor_stats["unit"],
+            "Enhancing",
+        ]
+    else:
+        tumor_volume = tumor_stats
+        edema_text = (
+            "Edema      "
+            + str(tumor_volume["total vasogenic edema volume"])
+            + "+/-6.3 "
+            + tumor_volume["unit"]
+        )
+        enhancing_text = (
+            "Enhancing  "
+            + str(tumor_volume["enhancing portion"])
+            + "+/-13.2 "
+            + tumor_volume["unit"]
+        )
+        non_enhancing_text = [
+            "Non-       "
+            + str(tumor_volume["non enhancing portion"])
+            + "+/-2.7 "
+            + tumor_volume["unit"],
+            "Enhancing",
+        ]
+    stats_d[f"{modality}_edema"] = edema_text
+    stats_d[f"{modality}_enhancing"] = enhancing_text
+    stats_d[f"{modality}_non_enhancing"] = " ".join(non_enhancing_text)
+    
     # add fixed text (research disclaimer, legend headers) to bitmap
     bitmap = cv2.putText(
         bitmap,
@@ -481,7 +520,7 @@ def generate_overlay_arr(tumor_volume: dict, slice_shape: tuple) -> np.ndarray:
         lineType=line_type,
     )
 
-    return bitmap
+    return stats_d, bitmap
 
 
 def postprocess(
@@ -548,15 +587,25 @@ def postprocess(
         )
 
     # add masks to t1ce and flair
+    all_results={}
     mask_values = BinaryMasksMSNet
-    for modality in ['t1ce', 'flair']:
+    for modality in ['t1ce', 'flair','diffusion', 'perfusion']:
         nifti_file = os.path.join(coreg_dir, f'brain_{modality}.nii.gz')
-        masked2dicom(
+        modality_results = masked2dicom(
             mask_path,
             nifti_file,
             dicom_source_file,
             output_dir,
             mask_values,
-            "masked_"+modality,
+            modality,
             tumor_volume,
         )
+        all_results.update(modality_results)
+
+    # After the loop, write the cumulative dictionary to a JSON file
+    
+    output_file_path = os.path.join(output_dir, 'result.json')
+    with open(output_file_path, 'w') as json_file:
+        json.dump(all_results, json_file, indent=4)
+
+    print(f"Results have been written to {output_file_path}")

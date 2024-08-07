@@ -1,5 +1,6 @@
 from src.preprocessing.dcm_to_nii import convert_dicom_to_nifti
 from src.preprocessing.coreg import coreg
+from src.preprocessing.coreg_perf import coreg_perf
 from src.preprocessing.skull_strip import skull_strip
 from src.models.segmentation import run_msnet_segmentation
 from src.postprocessing.postprocess import postprocess
@@ -44,6 +45,9 @@ def run_pipeline(base_dir):
         p.chmod(p.stat().st_mode | stat.S_IROTH | stat.S_IXOTH | stat.S_IWOTH)
     if len(os.listdir(skullstrip_dir)) == 0:
         skull_strip(coreg_dir, skullstrip_dir)
+
+    #register skull stripped t1ce and perfusion map
+    coreg_perf(nifti_dir, coreg_dir, skullstrip_dir)
 
     # glioma segmentation
     if not os.path.exists(seg_dir):
