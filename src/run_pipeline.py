@@ -1,5 +1,6 @@
 from src.preprocessing.dcm_to_nii import convert_dicom_to_nifti
 from src.preprocessing.coreg import coreg
+from src.preprocessing.coreg_perf import coreg_perf
 from src.preprocessing.skull_strip import skull_strip
 from src.models.segmentation import run_msnet_segmentation
 from src.postprocessing.postprocess import postprocess
@@ -45,6 +46,9 @@ def run_pipeline(base_dir):
     if len(os.listdir(skullstrip_dir)) == 0:
         skull_strip(coreg_dir, skullstrip_dir)
 
+    #register skull stripped t1ce and perfusion map
+    coreg_perf(nifti_dir, coreg_dir, skullstrip_dir)
+
     # glioma segmentation
     if not os.path.exists(seg_dir):
         os.makedirs(seg_dir)
@@ -86,5 +90,5 @@ def run_pipeline(base_dir):
 
 if __name__ == "__main__":
     #run_pipeline("/home/amritha/workspace/coreg-skull-strip-testing/data/")
-    #run_pipeline("/home/vagrant/MSNet-pipeline/data/")
-    run_pipeline("/data/")
+    run_pipeline("/home/vagrant/MSNet-pipeline/data/")
+    #run_pipeline("/data/")

@@ -22,7 +22,7 @@ def coreg(nifti_dir, coreg_dir):
         coreg_dir: Directory where coregistered NIfTI files will be placed
     """
     # get list of modalities
-    modalities = ['t1', 't1ce', 't2', 'flair']
+    modalities = ['t1', 't1ce', 't2', 'flair', 'diffusion']
 
     # coregister each modality to T1ce
     for modality in modalities:

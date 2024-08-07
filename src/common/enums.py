@@ -34,6 +34,7 @@ modalities = {
         "AX_MPR_FBH",
         "SAG_3D_MPR",
         "SAG_CS_MPRAGE",
+        "T1_3D_POST",
         "T1CE",
     ],
     "t1": ["AX_T1_PRE", "AX_T1", "T1"],
@@ -62,6 +63,6 @@ modalities = {
         "FLAIR",
         "FL",
     ],
-    "diffusion": ["DIFFUSION", "DIFF_meso"],
-    "perfusion": ["PERFUSION", "Perfusion"],
+    "diffusion": ["Diffusion_1e-3mm_s"],
+    "perfusion": ["MR_Perfusion"],
 }

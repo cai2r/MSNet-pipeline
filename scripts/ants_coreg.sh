@@ -2,8 +2,8 @@
 #
 dim=3 # image dimensionality
 #AP="/home/amritha/workspace/antsbin/ANTS-build/Examples/" # path to ANTs binaries
-#AP="/home/vagrant/ANTs/bin/"
-AP="/opt/ants/bin/"
+AP="/home/vagrant/ANTs/bin/"
+#AP="/opt/ants/bin/"
 ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=2  # controls multi-threading
 export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS
 f=$1 ; m=$2    # fixed and moving image file names
