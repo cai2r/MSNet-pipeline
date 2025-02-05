@@ -8,7 +8,9 @@ import os
 import csv
 import time
 import stat
+import glob
 from pathlib import Path
+
 
 def run_pipeline(base_dir):
     """Run the full pipeline, preprocessing, segmentation, postprocessing."""
@@ -45,9 +47,8 @@ def run_pipeline(base_dir):
         p.chmod(p.stat().st_mode | stat.S_IROTH | stat.S_IXOTH | stat.S_IWOTH)
     if len(os.listdir(skullstrip_dir)) == 0:
         skull_strip(coreg_dir, skullstrip_dir)
-
-    #register skull stripped t1ce and perfusion map
-    coreg_perf(nifti_dir, coreg_dir, skullstrip_dir)
+        #register skull stripped t1ce and perfusion map
+        coreg_perf(nifti_dir, coreg_dir, skullstrip_dir)
 
     # glioma segmentation
     if not os.path.exists(seg_dir):
@@ -72,7 +73,8 @@ def run_pipeline(base_dir):
     if len(os.listdir(output_dir)) == 0:
         # select a DICOM file to use as a template
         dcm_source_file = os.listdir(input_dir)[0]
-        dcm_source_file = os.path.join(input_dir, dcm_source_file)
+        #dcm_source_file = os.path.join(input_dir, dcm_source_file)
+        dcm_source_file = glob.glob(input_dir+'/*.dcm')[0]
         print("postprocessing started")
         postprocess(nifti_dir, coreg_dir, seg_dir, output_dir, dcm_source_file, tumor_volume)
 
@@ -87,6 +89,7 @@ def run_pipeline(base_dir):
 
     print("DONE")
     print("RUNTIME:", end - start)
+
 
 if __name__ == "__main__":
     #run_pipeline("/home/amritha/workspace/coreg-skull-strip-testing/data/")

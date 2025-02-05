@@ -138,10 +138,11 @@ def nifti2dicom(
     print(output_prefix)
 
     # diffusion and perfusion are not coregistered, they should be scaled
-    if ("diffusion" in output_prefix):# or ("perfusion" in output_prefix):
-        zoom_factor = nib.load(nifti_path).header.get_zooms()
-        nifti_data = zoom(nifti_data, zoom_factor)
-        nifti_data = np.flip(nifti_data, axis=(0))
+    # Note: Disabled to avoid flipping of diffusion image    
+    # if ("diffusion" in output_prefix):# or ("perfusion" in output_prefix):
+    #     zoom_factor = nib.load(nifti_path).header.get_zooms()
+    #     nifti_data = zoom(nifti_data, zoom_factor)
+    #     nifti_data = np.flip(nifti_data, axis=(0))
         
     # reorient arrays to save DICOM slices in AXIAL orientation
     nifti_data = np.rot90(nifti_data, axes=(0, 2))

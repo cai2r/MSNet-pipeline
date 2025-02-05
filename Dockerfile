@@ -61,7 +61,7 @@ RUN chmod -R 777 /opt/ants
 
 ADD . /
 
-RUN mkdir /data/1-input/
+RUN mkdir -p /data/1-input/
 RUN chmod -R 777 /data
 RUN chmod -R 777 /scripts
 RUN chmod -R 777 /src
@@ -71,7 +71,6 @@ RUN chmod -R 777 /environment.yml
 RUN apt-get update && apt-get install --no-install-recommends --no-install-suggests -y git build-essential cmake pigz
 RUN apt-get update && apt-get install --no-install-recommends --no-install-suggests -y libsm6 libxrender-dev libxext6 ffmpeg 
 RUN apt-get install unzip
-RUN apt-get install -y wget
 
 RUN wget --quiet -O /tmp/miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
 # install miniconda
