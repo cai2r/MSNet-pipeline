@@ -25,8 +25,7 @@ def coreg_perf(nifti_dir, coreg_dir, skullstrip_dir):
     # get list of modalities
     modality = 'perfusion'
 
-    # coregister perfusion modality to T1ce
-    
+    # coregister perfusion modality to T1ce    
     fixed_nifti = os.path.join(skullstrip_dir, 'brain_t1ce.nii.gz')
     moving_nifti = os.path.join(nifti_dir, f'brain_{modality}.nii.gz')
     ants_coreg(fixed_nifti, moving_nifti, 'fastfortesting')
@@ -42,9 +41,7 @@ def coreg_perf(nifti_dir, coreg_dir, skullstrip_dir):
     shutil.copy(new_file_path, skullstrip_dir)
     s_dir_path = os.path.join(skullstrip_dir, f'brain_{modality}.nii.gz')
     p = Path(s_dir_path)
-    p.chmod(p.stat().st_mode | stat.S_IROTH | stat.S_IXOTH | stat.S_IWOTH)
-
-    
+    p.chmod(p.stat().st_mode | stat.S_IROTH | stat.S_IXOTH | stat.S_IWOTH) 
 
     # remove intermediate files
     os.system("rm *.nii.gz")

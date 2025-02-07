@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -Eeo pipefail
+export PYTHONUNBUFFERED=1
 
 echo "-- Starting module..."
 #ls /src/models/msnet/model19_prepost4s/
