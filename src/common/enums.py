@@ -3,9 +3,9 @@ from enum import IntEnum
 
 
 class BinaryMasksMSNet(IntEnum):
+    TUMOR_CORE = 1
     WHOLE_TUMOR = 2
-    TUMOR_CORE = 4
-    ENHANCING_TUMOR = 1
+    ENHANCING_TUMOR = 4
 
 
 class BinaryMasksNnuNet(IntEnum):

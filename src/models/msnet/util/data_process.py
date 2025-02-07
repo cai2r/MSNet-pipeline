@@ -510,18 +510,32 @@ def calculate_tumor(filename, verbose=False):
     volume_per_pix = pixdim[1] * pixdim[2] * pixdim[3]
 
     volumes = {}
+    # This is wrong because it sums over the mask enum values!
+    # volumes["total vasogenic edema volume"] = round(
+    #     sum(data[data == 2]) * volume_per_pix / 1000, 3
+    # )
+    # volumes["enhancing portion"] = round(
+    #     sum(data[data == 4]) * volume_per_pix / 1000, 3
+    # )
+    # volumes["non enhancing portion"] = round(
+    #     sum(data[data == 1]) * volume_per_pix / 1000, 3
+    # )
+    # volumes["total tumor volume"] = round(
+    #     volumes["enhancing portion"] + volumes["non enhancing portion"], 3
+    # )
     volumes["total vasogenic edema volume"] = round(
-        sum(data[data == 2]) * volume_per_pix / 1000, 3
+        np.count_nonzero(data == 2) * volume_per_pix / 1000, 3
     )
     volumes["enhancing portion"] = round(
-        sum(data[data == 4]) * volume_per_pix / 1000, 3
+        np.count_nonzero(data == 4) * volume_per_pix / 1000, 3
     )
     volumes["non enhancing portion"] = round(
-        sum(data[data == 1]) * volume_per_pix / 1000, 3
+        np.count_nonzero(data == 1) * volume_per_pix / 1000, 3
     )
     volumes["total tumor volume"] = round(
         volumes["enhancing portion"] + volumes["non enhancing portion"], 3
     )
+
     if xyzt_units == 1:
         volumes["unit"] = "L"
     if xyzt_units == 2:

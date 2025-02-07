@@ -77,8 +77,7 @@ def arr2dicom(
     #ds.is_original_encoding=False
 
     ds.add_new(0x00280006, 'US', 0)
-    ds.fix_meta_info() 
-    
+    ds.fix_meta_info()   
 
     # copy the array containing the masked slice image to pixel data
     ds.PixelData = arr.tobytes()
@@ -203,13 +202,27 @@ def masked2dicom(
     output_prefix = "masked_"+ modality
 
     if modality=='diffusion' or modality=='perfusion':
-        tumor_stats["enhancing portion"]= round(np.mean(background_array[(mask_array == mask_values.ENHANCING_TUMOR.value) & (background_array > 0)]),3)
-        tumor_stats["total vasogenic edema volume"]= round(np.mean(background_array[(mask_array == mask_values.WHOLE_TUMOR.value) & (background_array > 0)]),3)
-        tumor_stats["non enhancing portion"]= round(np.mean(background_array[(mask_array == mask_values.TUMOR_CORE.value) & (background_array > 0)]),3)
+        #background_array[:]=1
+        tumor_stats["enhancing portion"]= round(np.average(background_array, weights=(mask_array == mask_values.ENHANCING_TUMOR.value) & (background_array > 0)),3)
+        tumor_stats["total vasogenic edema volume"]= round(np.average(background_array, weights=(mask_array == mask_values.WHOLE_TUMOR.value) & (background_array > 0)),3)
+        tumor_stats["non enhancing portion"]= round(np.average(background_array, weights=(mask_array == mask_values.TUMOR_CORE.value) & (background_array > 0)),3)
+
+        # tumor_stats["enhancing portion"]= round(np.sum(background_array, where=(mask_array == mask_values.ENHANCING_TUMOR.value) & (background_array > 0)),3)
+        # tumor_stats["total vasogenic edema volume"]= round(np.sum(background_array, where=(mask_array == mask_values.WHOLE_TUMOR.value) & (background_array > 0)),3)
+        # tumor_stats["non enhancing portion"]= round(np.sum(background_array, where=(mask_array == mask_values.TUMOR_CORE.value) & (background_array > 0)),3)
+
+        # tumor_stats["enhancing portion"]= round(np.mean(background_array[(mask_array == mask_values.ENHANCING_TUMOR.value) & (background_array > 0)]),3)
+        # tumor_stats["total vasogenic edema volume"]= round(np.mean(background_array[(mask_array == mask_values.WHOLE_TUMOR.value) & (background_array > 0)]),3)
+        # tumor_stats["non enhancing portion"]= round(np.mean(background_array[(mask_array == mask_values.TUMOR_CORE.value) & (background_array > 0)]),3)
         if modality=='diffusion':
-            tumor_stats["unit"]= "1e-3 mm2/s"
+            tumor_stats["unit"]= "1e-3mm2/s"
         if modality=='perfusion':
             tumor_stats["unit"]= "ml/100ml"
+        # print("---")
+        # print(modality)
+        # print(tumor_stats)
+        # background_array = nib.load(background_file).get_fdata()
+
     # reorient arrays to save DICOM slices in AXIAL orientation
     mask_array = np.rot90(mask_array, axes=(0, 2))
     mask_array = np.flip(mask_array, axis=(1, 2))
@@ -241,6 +254,7 @@ def masked2dicom(
     
     return stats_dict
 
+
 def merge3D_mask_arr(
     mask_arr: np.ndarray,
     background_arr: np.ndarray,
@@ -265,6 +279,11 @@ def merge3D_mask_arr(
         f"Number of slices in the segmentation mask ({len_mask}) has to be the same as the number of slices "
         f"in the background file ({len_background})"
     )
+
+    # print("DEBUG --")
+    # print(f"Vaso    = {np.count_nonzero(mask_arr==2)}")
+    # print(f"Enhance = {np.count_nonzero(mask_arr==4)}")
+    # print(f"Non-Enh = {np.count_nonzero(mask_arr==1)}")
 
     for i in range(mask_arr.shape[0]):
         yield merge2D_mask_arr(
@@ -301,7 +320,7 @@ def merge2D_mask_arr(
     binary_mask_3 = np.where(mask == mask_values.TUMOR_CORE.value, 255, 0).astype(
         np.ubyte
     )
-    mask_rgb = np.dstack((binary_mask_1, binary_mask_2, binary_mask_3))
+    mask_rgb = np.dstack((binary_mask_3, binary_mask_2, binary_mask_1))
     mask_rgb_pil = Image.fromarray(mask_rgb)
 
     # Normalize background array
@@ -366,18 +385,26 @@ def generate_overlay_arr(tumor_stats: dict, slice_shape: tuple, modality):# -> t
     bitmap = np.zeros(shape=(slice_shape[0], slice_shape[1], 3), dtype=np.uint8)
 
     # set text visual specs
-    font = cv2.FONT_HERSHEY_SIMPLEX
-    font_scale = 0.3
+    #font = cv2.FONT_HERSHEY_SIMPLEX
+    #font_scale = 0.3
+    font = cv2.FONT_HERSHEY_PLAIN
+    font_scale = 0.75
     color_blue = (255, 0, 0)
     color_green = (0, 255, 0)
     color_red = (0, 0, 255)
     color_white = (255, 255, 255)
     thickness = 1
-    line_type = cv2.LINE_4
+    #line_type = cv2.LINE_4
+    line_type = cv2.LINE_AA
 
     # text to display
-    research_warning = ["FOR RESEARCH ONLY;", "REFER TO OFFICIAL REPORT FOR DETAILS"]
-    legend_headers = "Legend"
+    research_warning = ["FOR RESEARCH ONLY -", "REFER TO OFFICIAL REPORT"]
+    legend_headers = "Volume"
+    if modality =='diffusion':
+        legend_headers = "Mean Diffusion"
+    if modality =='perfusion':
+        legend_headers = "Mean Perfusion"
+
     stats_d={}
     if modality =='diffusion' or modality =='perfusion':
         edema_text = (
@@ -392,13 +419,12 @@ def generate_overlay_arr(tumor_stats: dict, slice_shape: tuple, modality):# -> t
             + " "
             + tumor_stats["unit"]
         )
-        non_enhancing_text = [
-            "Non-       "
+        non_enhancing_text = (
+            "Non-Enh.   "
             + str(tumor_stats["non enhancing portion"])
             + " "
-            + tumor_stats["unit"],
-            "Enhancing",
-        ]
+            + tumor_stats["unit"]
+        )
     else:
         tumor_volume = tumor_stats
         edema_text = (
@@ -413,16 +439,15 @@ def generate_overlay_arr(tumor_stats: dict, slice_shape: tuple, modality):# -> t
             + "+/-13.2 "
             + tumor_volume["unit"]
         )
-        non_enhancing_text = [
-            "Non-       "
+        non_enhancing_text = (
+            "Non-Enh.   "
             + str(tumor_volume["non enhancing portion"])
             + "+/-2.7 "
-            + tumor_volume["unit"],
-            "Enhancing",
-        ]
+            + tumor_volume["unit"]
+        )
     stats_d[f"{modality}_edema"] = edema_text
     stats_d[f"{modality}_enhancing"] = enhancing_text
-    stats_d[f"{modality}_non_enhancing"] = " ".join(non_enhancing_text)
+    stats_d[f"{modality}_non_enhancing"] = non_enhancing_text
     
     # add fixed text (research disclaimer, legend headers) to bitmap
     bitmap = cv2.putText(
@@ -457,6 +482,7 @@ def generate_overlay_arr(tumor_stats: dict, slice_shape: tuple, modality):# -> t
         thickness=thickness,
         lineType=line_type,
     )
+
     bitmap = cv2.rectangle(
         bitmap,
         (int(slice_shape[1] // 30), int(slice_shape[0] * 8.5 // 10)),
@@ -502,18 +528,8 @@ def generate_overlay_arr(tumor_stats: dict, slice_shape: tuple, modality):# -> t
     )
     bitmap = cv2.putText(
         bitmap,
-        text=non_enhancing_text[0],
+        text=non_enhancing_text,
         org=(int(slice_shape[1] * 3.5 // 30), int(slice_shape[0] * 9.55 // 10)),
-        fontFace=font,
-        fontScale=font_scale,
-        color=color_white,
-        thickness=thickness,
-        lineType=line_type,
-    )
-    bitmap = cv2.putText(
-        bitmap,
-        text=non_enhancing_text[1],
-        org=(int(slice_shape[1] * 3.5 // 30), int(slice_shape[0] * 9.95 // 10)),
         fontFace=font,
         fontScale=font_scale,
         color=color_white,
@@ -603,8 +619,7 @@ def postprocess(
         )
         all_results.update(modality_results)
 
-    # After the loop, write the cumulative dictionary to a JSON file
-    
+    # After the loop, write the cumulative dictionary to a JSON file   
     output_file_path = os.path.join(output_dir, 'result.json')
     with open(output_file_path, 'w') as json_file:
         json.dump(all_results, json_file, indent=4)
