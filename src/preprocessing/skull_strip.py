@@ -14,7 +14,8 @@ def ants_skull_strip(image, coreg_dir, skullstrip_dir):
     os.system("scripts/ants_skull_strip.sh -d 3 -a {} \
               -e {} \
               -m {} \
-              -o {}".format(image_file, brain_with_skull_template, brain_prior, output_prefix))
+              -f {} \
+              -o {}".format(image_file, brain_with_skull_template, brain_prior, registration_mask, output_prefix))
 
     # move output files to skullstrip_dir
     os.system("mv *Brain.nii.gz {}/{}".format(skullstrip_dir, image))
