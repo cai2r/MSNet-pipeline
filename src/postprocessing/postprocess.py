@@ -92,16 +92,16 @@ def pad_nifti_data(nifti_data):
         nifti_data,
         (
             (
-                int((256 - nifti_data.shape[0]) / 2),
-                int((256 - nifti_data.shape[0]) / 2),
+                int(max(256 - nifti_data.shape[0],0) / 2),
+                int(max(256 - nifti_data.shape[0],0) / 2),
             ),
             (
-                int((256 - nifti_data.shape[1]) / 2),
-                int((256 - nifti_data.shape[1]) / 2),
+                int(max(256 - nifti_data.shape[1],0) / 2),
+                int(max(256 - nifti_data.shape[1],0) / 2),
             ),
             (
-                int((256 - nifti_data.shape[2]) / 2),
-                int((256 - nifti_data.shape[2]) / 2),
+                int(max(256 - nifti_data.shape[2],0) / 2),
+                int(max(256 - nifti_data.shape[2],0) / 2),
             ),
         ),
         "constant",
