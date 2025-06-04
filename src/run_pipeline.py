@@ -51,7 +51,7 @@ def run_pipeline(base_dir):
     if len(os.listdir(skullstrip_dir)) == 0:
         print("### Running skullstripping...")
         skull_strip(coreg_dir, skullstrip_dir)
-        #register skull stripped t1ce and perfusion map
+        #register skull stripped t1ce and perfusion, diffusion maps
         coreg_perf(nifti_dir, coreg_dir, skullstrip_dir)
     else:
         print("### Skipping skullstripping...")

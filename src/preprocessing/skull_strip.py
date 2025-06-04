@@ -51,7 +51,7 @@ def skull_strip(coreg_dir, skullstrip_dir):
         skullstrip_dir: Directory where skull stripped NIfTI files will be placed
     """
     # modalities to skull strip
-    modalities = ['t1ce', 't1', 't2', 'flair', 'diffusion']
+    modalities = ['t1ce', 't1', 't2', 'flair']
 
     # skull strip T1CE
     image = 'brain_t1ce.nii.gz'

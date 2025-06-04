@@ -23,26 +23,27 @@ def coreg_perf(nifti_dir, coreg_dir, skullstrip_dir):
         coreg_dir: Directory where coregistered NIfTI files will be placed
     """
     # get list of modalities
-    modality = 'perfusion'
+    modalities = ['perfusion', 'diffusion']
 
-    # coregister perfusion modality to T1ce    
-    fixed_nifti = os.path.join(skullstrip_dir, 'brain_t1ce.nii.gz')
-    moving_nifti = os.path.join(nifti_dir, f'brain_{modality}.nii.gz')
-    ants_coreg(fixed_nifti, moving_nifti, 'fastfortesting')
+    for modality in modalities:
+        # coregister perfusion modality to T1ce    
+        fixed_nifti = os.path.join(skullstrip_dir, 'brain_t1ce.nii.gz')
+        moving_nifti = os.path.join(nifti_dir, f'brain_{modality}.nii.gz')
+        ants_coreg(fixed_nifti, moving_nifti, 'fastfortesting')
 
-    # move coregistered file to coreg_dir and skull_strip dir
-    registered_nifti = [file for file in os.listdir('.') if modality in file and file.endswith('_warped.nii.gz')][0]
-    new_file_path = os.path.join(coreg_dir, f'brain_{modality}.nii.gz')
-    os.rename(registered_nifti, new_file_path)
-    p = Path(new_file_path)
-    p.chmod(p.stat().st_mode | stat.S_IROTH | stat.S_IXOTH | stat.S_IWOTH)
+        # move coregistered file to coreg_dir and skull_strip dir
+        registered_nifti = [file for file in os.listdir('.') if modality in file and file.endswith('_warped.nii.gz')][0]
+        new_file_path = os.path.join(coreg_dir, f'brain_{modality}.nii.gz')
+        os.rename(registered_nifti, new_file_path)
+        p = Path(new_file_path)
+        p.chmod(p.stat().st_mode | stat.S_IROTH | stat.S_IXOTH | stat.S_IWOTH)
 
-    # Copy the renamed file to the skullstripe_dir directory
-    shutil.copy(new_file_path, skullstrip_dir)
-    s_dir_path = os.path.join(skullstrip_dir, f'brain_{modality}.nii.gz')
-    p = Path(s_dir_path)
-    p.chmod(p.stat().st_mode | stat.S_IROTH | stat.S_IXOTH | stat.S_IWOTH) 
+        # Copy the renamed file to the skullstripe_dir directory
+        shutil.copy(new_file_path, skullstrip_dir)
+        s_dir_path = os.path.join(skullstrip_dir, f'brain_{modality}.nii.gz')
+        p = Path(s_dir_path)
+        p.chmod(p.stat().st_mode | stat.S_IROTH | stat.S_IXOTH | stat.S_IWOTH) 
 
-    # remove intermediate files
-    os.system("rm *.nii.gz")
-    os.system("rm *.mat")
+        # remove intermediate files
+        os.system("rm *.nii.gz")
+        os.system("rm *.mat")
