@@ -2,7 +2,7 @@ import os
 import stat
 from pathlib import Path
 
-def ants_coreg(fixed_nifti, moving_nifti, setting):
+def ants_coreg(fixed_nifti, moving_nifti, output_prefix):
     """Coregister two NIfTI files using ANTs.
 
     Args:
@@ -11,7 +11,8 @@ def ants_coreg(fixed_nifti, moving_nifti, setting):
         setting: forproduction or fastfortesting
     """
     # run ants registration script
-    os.system("scripts/ants_coreg.sh {} {} {}".format(fixed_nifti, moving_nifti, setting))
+    command = f"scripts/antsRegistrationSyN.sh -d 3 -n 4 -y 1 -t a -f {fixed_nifti} -m {moving_nifti} -o {output_prefix}"
+    os.system(command)
 
 
 def coreg(nifti_dir, coreg_dir):
@@ -33,10 +34,10 @@ def coreg(nifti_dir, coreg_dir):
         else:
             fixed_nifti = os.path.join(nifti_dir, 'brain_t1ce.nii.gz')
             moving_nifti = os.path.join(nifti_dir, f'brain_{modality}.nii.gz')
-            ants_coreg(fixed_nifti, moving_nifti, 'fastfortesting')
+            ants_coreg(fixed_nifti, moving_nifti, modality)
 
             # move coregistered file to coreg_dir
-            registered_nifti = [file for file in os.listdir('.') if modality in file and file.endswith('_warped.nii.gz')][0]
+            registered_nifti = [file for file in os.listdir('.') if modality in file and file.endswith('Warped.nii.gz')][0]
             os.rename(registered_nifti, os.path.join(coreg_dir, f'brain_{modality}.nii.gz'))
             p = Path(os.path.join(coreg_dir, f'brain_{modality}.nii.gz'))
             p.chmod(p.stat().st_mode | stat.S_IROTH | stat.S_IXOTH | stat.S_IWOTH)
