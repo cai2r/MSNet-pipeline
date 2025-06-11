@@ -22,7 +22,7 @@ RUN wget --quiet -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>
 
 ADD . /tmp/ants/source
 
-RUN git clone https://github.com/ANTsX/ANTs.git
+RUN git clone --branch v2.6.1 --depth 1 https://github.com/ANTsX/ANTs.git
 
 
 RUN cp -r ./ANTs/* /tmp/ants/source
