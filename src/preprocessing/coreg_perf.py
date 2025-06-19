@@ -12,7 +12,7 @@ def ants_coreg(fixed_nifti, moving_nifti, output_prefix):
         output_prefix: modality
     """
     # run ants registration script
-    command = f"scripts/antsRegistrationSyN.sh -d 3 -n 4 -y 1 -t r -f {fixed_nifti} -m {moving_nifti} -o {output_prefix}"
+    command = f"scripts/commandRigid.sh"
     os.system(command)
 
 

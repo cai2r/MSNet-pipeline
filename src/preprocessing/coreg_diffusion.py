@@ -12,7 +12,7 @@ def ants_coreg(fixed_nifti, moving_nifti):
     """
     # run ants registration script
     output_prefix = 'output_diffusion_'
-    command = f"scripts/antsRegistrationSyN.sh -d 3 -n 4 -y 1 -t s -f {fixed_nifti} -m {moving_nifti} -o {output_prefix}"
+    command = f"scripts/antsRegistrationSyN.sh -d 3 -n 8 -t r -f {fixed_nifti} -m {moving_nifti} -o {output_prefix}"
     os.system(command)
 
 
@@ -27,7 +27,7 @@ def coreg_diffusion(nifti_dir, coreg_dir):
     modality = 'diffusion'
 
     # coregister perfusion modality to T1ce    
-    fixed_nifti = os.path.join(coreg_dir, 'brain_t2.nii.gz')
+    fixed_nifti = os.path.join(coreg_dir, 'brain_t1ce.nii.gz')
     moving_nifti = os.path.join(nifti_dir, f'brain_{modality}.nii.gz')
     ants_coreg(fixed_nifti, moving_nifti)
 
