@@ -19,6 +19,8 @@ import json
 
 from src.common.enums import BinaryMasksMSNet
 
+import pandas as pd
+
 def arr2dicom(
     arr: np.ndarray,
     dicom_file: pydicom.dataset.FileDataset,
@@ -222,6 +224,52 @@ def masked2dicom(
         # print(modality)
         # print(tumor_stats)
         # background_array = nib.load(background_file).get_fdata()
+
+        # generate a CSV spreadsheet with the values of the ADC or rCBV maps from each voxel in the segmentation
+        # 1. Enhancing Portion
+        enhancing_data = []
+        enhancing_tumor_mask = (mask_array == mask_values.ENHANCING_TUMOR.value) & (background_array > 0)
+        # Get the indices (coordinates) where the mask is True
+        x_coords, y_coords, z_coords = np.where(enhancing_tumor_mask)
+        for i in range(len(z_coords)):
+            z, y, x = z_coords[i], y_coords[i], x_coords[i]
+            voxel_value = background_array[x, y, z]
+            enhancing_data.append({'x': x, 'y': y, 'z': z, 'Voxel_Value': voxel_value})
+        # Save to CSV
+        output_file_path = os.path.join(output_dir, f"{modality}_enhancing_portion_voxels.csv")
+        df_enhancing = pd.DataFrame(enhancing_data)
+        df_enhancing.to_csv(output_file_path, index=False)
+        print(f"Saved {len(enhancing_data)} enhancing tumor voxel values to {modality}_enhancing_portion_voxels.csv")
+
+        # 2. Total Vasogenic Edema Volume
+        whole_tumor_data = []
+        whole_tumor_mask = (mask_array == mask_values.WHOLE_TUMOR.value) & (background_array > 0)
+        # Get the indices (coordinates) where the mask is True
+        x_coords, y_coords, z_coords = np.where(whole_tumor_mask)
+        for i in range(len(z_coords)):
+            z, y, x = z_coords[i], y_coords[i], x_coords[i]
+            voxel_value = background_array[x, y, z]
+            whole_tumor_data.append({'x': x, 'y': y, 'z': z, 'Voxel_Value': voxel_value})
+        # Save to CSV
+        output_file_path = os.path.join(output_dir, f"{modality}_whole_tumor_voxels.csv")
+        df_whole_tumor = pd.DataFrame(whole_tumor_data)
+        df_whole_tumor.to_csv(output_file_path, index=False)
+        print(f"Saved {len(whole_tumor_data)} whole tumor voxel values to {modality}_whole_tumor_voxels.csv")
+
+        # 3. Non-Enhancing Portion
+        non_enhancing_data = []
+        tumor_core_mask = (mask_array == mask_values.TUMOR_CORE.value) & (background_array > 0)
+        # Get the indices (coordinates) where the mask is True
+        x_coords, y_coords, z_coords = np.where(tumor_core_mask)
+        for i in range(len(z_coords)):
+            z, y, x = z_coords[i], y_coords[i], x_coords[i]
+            voxel_value = background_array[x, y, z]
+            non_enhancing_data.append({'x': x, 'y': y, 'z': z, 'Voxel_Value': voxel_value})
+        # Save to CSV
+        output_file_path = os.path.join(output_dir, f"{modality}_non_enhancing_portion_voxels.csv")
+        df_non_enhancing = pd.DataFrame(non_enhancing_data)
+        df_non_enhancing.to_csv(output_file_path, index=False)
+        print(f"Saved {len(non_enhancing_data)} non-enhancing tumor voxel values to {modality}_non_enhancing_portion_voxels.csv")
 
     # reorient arrays to save DICOM slices in AXIAL orientation
     mask_array = np.rot90(mask_array, axes=(0, 2))
