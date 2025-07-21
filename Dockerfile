@@ -72,7 +72,7 @@ RUN apt-get update && apt-get install --no-install-recommends --no-install-sugge
 RUN apt-get update && apt-get install --no-install-recommends --no-install-suggests -y libsm6 libxrender-dev libxext6 ffmpeg 
 RUN apt-get install unzip
 
-RUN wget --quiet -O /tmp/miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+RUN wget --quiet -O /tmp/miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-py39_25.3.1-1-Linux-x86_64.sh
 # install miniconda
 ARG CONDA_DIR=/opt/conda
 ENV PATH $CONDA_DIR/bin:$PATH
