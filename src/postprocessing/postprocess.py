@@ -169,6 +169,111 @@ def nifti2dicom(
         #p = Path(output_filename)
         #p.chmod(p.stat().st_mode | stat.S_IROTH | stat.S_IXOTH | stat.S_IWOTH)
 
+def nifti2dicom_original_scale(
+    nifti_path,
+    dicom_path,
+    output_dir,
+    output_prefix,
+) -> None:
+    """Converts a NIfTI file into a DICOM file.
+
+    Args:
+        nifti_path: Path to the NIfTI file.
+        dicom_path: Path of the DICOM file to use as a template for the new DICOM files. Metadata will be copied from
+            this file.
+        output_dir: Directory where the final DICOM file will be saved.
+        output_prefix: Prefix for the output DICOM files.
+    """
+    # read in NIfTI file data
+    img = nib.load(nifti_path)
+    nifti_data = img.get_fdata()
+    nifti_header = img.header
+    if len(nifti_data.shape) == 4:
+        nifti_data = nifti_data[:, :, :, 0]
+
+    # grab info from dicom file
+    dicom_file = pydicom.dcmread(dicom_path)
+
+    # reorient arrays to save DICOM slices in AXIAL orientation
+    nifti_data = np.rot90(nifti_data, axes=(0, 2))
+    nifti_data = np.flip(nifti_data, axis=(1, 2))
+
+    nifti_data = pad_nifti_data(nifti_data)
+
+    arr_min = nifti_data.min()
+    arr_max = nifti_data.max()
+    pixel_range = arr_max - arr_min
+
+    # A 16-bit signed integer has a range of -32768 to 32767.
+    # Let's target the full range for better precision.
+    max_int = 32767
+    min_int = -32768
+
+    # iterate over slices and save them as DICOM files
+    series_uid = pydicom.uid.generate_uid()
+    for i in range(nifti_data.shape[0]):
+        slice = nifti_data[i, :, :]
+        if pixel_range > 0:
+            rescale_slope = pixel_range / (max_int - min_int)
+            rescale_intercept = arr_min - (min_int * rescale_slope)  
+            scaled_slice = ((slice - arr_min) / rescale_slope) + min_int
+        else: # Handle case where all values are the same
+            rescale_slope = 1.0
+            rescale_intercept = arr_min
+            scaled_slice = np.zeros_like(slice)
+
+        # This will be the new PixelData
+        scaled_slice = scaled_slice.astype('int16') # Use int16 for 16-bit signed data
+
+        ds = dicom_file.copy()
+
+        ds.SeriesInstanceUID = series_uid
+        ds.SeriesDescription = output_prefix.upper()
+        ds.SOPInstanceUID = pydicom.uid.generate_uid()
+
+        # adjust the shape of the DICOM image to match the masked slice
+        ds.Rows = slice.shape[0]
+        ds.Columns = slice.shape[1]
+        # adjust the expected range of pixels in the image data
+        # this is information DICOM viewers use to adjust brightness/constrast for display
+        ds.WindowCenter = (arr_min + arr_max) / 2
+        ds.WindowWidth = arr_max - arr_min
+
+        ds.ImageOrientationPatient = [1, 0, 0, 0, 1, 0]
+        # tag which slice in the volume we're dealing with
+        ds.ImagePositionPatient = [0, 0, i]
+        ds.InstanceNumber = i + 1
+
+        # Set the DICOM tags for scaling
+        ds.RescaleIntercept = rescale_intercept
+        ds.RescaleSlope = rescale_slope
+
+        # specify transfer syntax to assign pixel data
+        ds.file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian
+        
+        # assign values for a color DICOM instead of a grayscale
+        ds.PhotometricInterpretation = "MONOCHROME2"
+        ds.SamplesPerPixel = 1
+        ds.BitsAllocated = 16
+        ds.BitsStored = 16
+        ds.HighBit = 15
+        ds.PixelRepresentation = 1
+
+        ds.is_little_endian=True
+        ds.is_implicit_VR=False
+
+        ds.add_new(0x00280006, 'US', 0)
+        ds.fix_meta_info()   
+
+        # copy the array containing the masked slice image to pixel data
+        ds.PixelData = scaled_slice.tobytes()
+        ds.ImageType = "DERIVED\\SECONDARY"
+        
+        output_filename = (Path(output_dir) / f"{output_prefix}_{i + 1}").with_suffix(
+            ".dcm"
+        )
+        ds.save_as(output_filename)
+
 
 def masked2dicom(
     mask_path,
@@ -608,28 +713,6 @@ def postprocess(
         "mask",
     )
 
-    # convert perfusion to DICOM
-    nifti_file = os.path.join(nifti_dir, 'brain_perfusion.nii.gz')
-    # sometimes perfusion was not run, so check if file exists
-    if os.path.exists(nifti_file):
-        nifti2dicom(
-        nifti_file,
-        dicom_source_file,
-        output_dir,
-        "perfusion",
-        )
-
-    # convert diffusion to DICOM
-    nifti_file = os.path.join(nifti_dir, 'brain_diffusion.nii.gz')
-    # sometimes diffusion was not run, so check if file exists
-    if os.path.exists(nifti_file):
-        nifti2dicom(
-        nifti_file,
-        dicom_source_file,
-        output_dir,
-        "diffusion",
-        )
-
     # get list of coregistered files
     nifti_files = os.listdir(coreg_dir)
 
@@ -644,12 +727,20 @@ def postprocess(
     # convert each modality to DICOM
     for modality in modalities:
         nifti_file = os.path.join(coreg_dir, f'brain_{modality}.nii.gz')
-        nifti2dicom(
+        if modality == "diffusion" or modality == "perfusion":
+            nifti2dicom_original_scale(
             nifti_file,
             dicom_source_file,
             output_dir,
             modality,
-        )
+            )   
+        else:
+            nifti2dicom(
+            nifti_file,
+            dicom_source_file,
+            output_dir,
+            modality,
+            )
 
     # add masks to t1ce and flair
     all_results={}

@@ -82,8 +82,6 @@ def run_pipeline(base_dir):
     if len(os.listdir(output_dir)) == 0:
         print("### Running postprocessing...")
         # select a DICOM file to use as a template
-        dcm_source_file = os.listdir(input_dir)[0]
-        #dcm_source_file = os.path.join(input_dir, dcm_source_file)
         dcm_source_file = glob.glob(input_dir+'/*.dcm')[0]        
         postprocess(nifti_dir, coreg_dir, seg_dir, output_dir, dcm_source_file, tumor_volume)
     else:
