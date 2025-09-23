@@ -7,6 +7,7 @@ from src.models.segmentation import run_msnet_segmentation
 from src.postprocessing.postprocess import postprocess
 import os, csv, time, stat, glob
 from pathlib import Path
+from pydicom import dcmread
 
 
 def run_pipeline(base_dir):
@@ -84,6 +85,17 @@ def run_pipeline(base_dir):
         # select a DICOM file to use as a template
         dcm_source_file = glob.glob(input_dir+'/*.dcm')[0]        
         postprocess(nifti_dir, coreg_dir, seg_dir, output_dir, dcm_source_file, tumor_volume)
+        # Move all the output files/folders to a subfolder named after the Accession Number
+        ds = dcmread(dcm_source_file, stop_before_pixels=True)
+        accession_number = ds.get("AccessionNumber", "output").strip()
+        new_output_dir = os.path.join(output_dir, accession_number)
+        if not os.path.exists(new_output_dir):
+            os.makedirs(new_output_dir)
+            p = Path(new_output_dir)
+            p.chmod(p.stat().st_mode | stat.S_IROTH | stat.S_IXOTH | stat.S_IWOTH)
+        for f in os.listdir(output_dir):
+            if f != accession_number:
+                os.rename(os.path.join(output_dir, f), os.path.join(new_output_dir, f))
     else:
         print("### Skipping postprocessing...")
 
