@@ -63,6 +63,13 @@ modalities = {
         "FLAIR",
         "FL",
     ],
-    "diffusion": ["Diffusion_1e-3mm_s"],
+    "diffusion": [
+        "Diffusion_1e-3mm_s",
+        "AX_DIFFUSION_ADC",
+        "AX_DIFFUSION-P_ADC",
+        "AX_DIFFUSION_SMS_ADC",
+        "BRAIN_MAPPING_meso_ADC",
+        "BRAIN_MAPPING_2mmiso_meso_RMR_ADC",
+    ],
     "perfusion": ["MR_Perfusion"],
 }
