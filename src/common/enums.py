@@ -81,6 +81,8 @@ modalities = {
         "AX_DIFFUSION_SMS_ADC",
         "BRAIN_MAPPING_meso_ADC",
         "BRAIN_MAPPING_2mmiso_meso_RMR_ADC",
+        "Ax_DIFFUSION",
+        "MB2_DIFFUSION",
     ],
     "perfusion": ["MR_Perfusion"],
 }
