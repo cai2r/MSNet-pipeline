@@ -8,6 +8,7 @@ from typing import Generator
 import os
 import stat
 from pathlib import Path
+import logging  # <-- ADDED
 
 import cv2
 import numpy as np
@@ -20,6 +21,19 @@ import json
 from src.common.enums import BinaryMasksMSNet
 
 import pandas as pd
+
+# --- ADDED LOGGING CONFIGURATION ---
+# Configure basic logging to file and console
+logging.basicConfig(
+    level=logging.INFO,  # Change to logging.DEBUG for more verbose output
+    format="%(levelname)s - %(message)s",
+    handlers=[
+        logging.FileHandler("postprocess.log"),  # Log to a file
+        logging.StreamHandler(),  # Log to the console
+    ],
+)
+# -----------------------------------
+
 
 def arr2dicom(
     arr: np.ndarray,
@@ -61,30 +75,30 @@ def arr2dicom(
 
     # specify transfer syntax to assign pixel data
     ds.file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian
-    #ds.file_meta.TransferSyntaxUID = pydicom.uid.ImplicitVRLittleEndian
-     
+    # ds.file_meta.TransferSyntaxUID = pydicom.uid.ImplicitVRLittleEndian
+
     # assign values for a color DICOM instead of a grayscale
     ds.PhotometricInterpretation = "RGB"
     ds.SamplesPerPixel = 3
     ds.BitsAllocated = 8
     ds.BitsStored = 8
     ds.HighBit = 7
-    #ds.PixelRepresentation = 0
-    #ds.PlanarConfiguration = 0
-    #--update
-    
-     #--update
-    ds.is_little_endian=True
-    ds.is_implicit_VR=False
-    #ds.is_original_encoding=False
+    # ds.PixelRepresentation = 0
+    # ds.PlanarConfiguration = 0
+    # --update
 
-    ds.add_new(0x00280006, 'US', 0)
-    ds.fix_meta_info()   
+    # --update
+    ds.is_little_endian = True
+    ds.is_implicit_VR = False
+    # ds.is_original_encoding=False
+
+    ds.add_new(0x00280006, "US", 0)
+    ds.fix_meta_info()
 
     # copy the array containing the masked slice image to pixel data
     ds.PixelData = arr.tobytes()
     ds.ImageType = "DERIVED\\SECONDARY"
-    
+
     return ds
 
 
@@ -94,16 +108,16 @@ def pad_nifti_data(nifti_data):
         nifti_data,
         (
             (
-                int(max(256 - nifti_data.shape[0],0) / 2),
-                int(max(256 - nifti_data.shape[0],0) / 2),
+                int(max(256 - nifti_data.shape[0], 0) / 2),
+                int(max(256 - nifti_data.shape[0], 0) / 2),
             ),
             (
-                int(max(256 - nifti_data.shape[1],0) / 2),
-                int(max(256 - nifti_data.shape[1],0) / 2),
+                int(max(256 - nifti_data.shape[1], 0) / 2),
+                int(max(256 - nifti_data.shape[1], 0) / 2),
             ),
             (
-                int(max(256 - nifti_data.shape[2],0) / 2),
-                int(max(256 - nifti_data.shape[2],0) / 2),
+                int(max(256 - nifti_data.shape[2], 0) / 2),
+                int(max(256 - nifti_data.shape[2], 0) / 2),
             ),
         ),
         "constant",
@@ -128,6 +142,10 @@ def nifti2dicom(
         output_dir: Directory where the final DICOM file will be saved.
         output_prefix: Prefix for the output DICOM files.
     """
+    logging.info(f"Converting NIfTI to DICOM: {output_prefix}")  # <-- CHANGED
+    logging.debug(f"NIfTI path: {nifti_path}")
+    logging.debug(f"DICOM template path: {dicom_path}")
+
     # read in NIfTI file data
     nifti_data = nib.load(nifti_path).get_fdata()
     if len(nifti_data.shape) == 4:
@@ -136,15 +154,6 @@ def nifti2dicom(
     # grab info from dicom file
     dicom_file = pydicom.dcmread(dicom_path)
 
-    print(output_prefix)
-
-    # diffusion and perfusion are not coregistered, they should be scaled
-    # Note: Disabled to avoid flipping of diffusion image    
-    # if ("diffusion" in output_prefix):# or ("perfusion" in output_prefix):
-    #     zoom_factor = nib.load(nifti_path).header.get_zooms()
-    #     nifti_data = zoom(nifti_data, zoom_factor)
-    #     nifti_data = np.flip(nifti_data, axis=(0))
-        
     # reorient arrays to save DICOM slices in AXIAL orientation
     nifti_data = np.rot90(nifti_data, axes=(0, 2))
     nifti_data = np.flip(nifti_data, axis=(1, 2))
@@ -166,8 +175,8 @@ def nifti2dicom(
             ".dcm"
         )
         output_dicom_file.save_as(output_filename)
-        #p = Path(output_filename)
-        #p.chmod(p.stat().st_mode | stat.S_IROTH | stat.S_IXOTH | stat.S_IWOTH)
+    logging.debug(f"Finished converting {output_prefix}")
+
 
 def nifti2dicom_original_scale(
     nifti_path,
@@ -184,6 +193,10 @@ def nifti2dicom_original_scale(
         output_dir: Directory where the final DICOM file will be saved.
         output_prefix: Prefix for the output DICOM files.
     """
+    logging.info(f"Converting NIfTI to DICOM (Original Scale): {output_prefix}")  # <-- CHANGED
+    logging.debug(f"NIfTI path: {nifti_path}")
+    logging.debug(f"DICOM template path: {dicom_path}")
+
     # read in NIfTI file data
     img = nib.load(nifti_path)
     nifti_data = img.get_fdata()
@@ -215,15 +228,15 @@ def nifti2dicom_original_scale(
         slice = nifti_data[i, :, :]
         if pixel_range > 0:
             rescale_slope = pixel_range / (max_int - min_int)
-            rescale_intercept = arr_min - (min_int * rescale_slope)  
+            rescale_intercept = arr_min - (min_int * rescale_slope)
             scaled_slice = ((slice - arr_min) / rescale_slope) + min_int
-        else: # Handle case where all values are the same
+        else:  # Handle case where all values are the same
             rescale_slope = 1.0
             rescale_intercept = arr_min
             scaled_slice = np.zeros_like(slice)
 
         # This will be the new PixelData
-        scaled_slice = scaled_slice.astype('int16') # Use int16 for 16-bit signed data
+        scaled_slice = scaled_slice.astype("int16")  # Use int16 for 16-bit signed data
 
         ds = dicom_file.copy()
 
@@ -250,7 +263,7 @@ def nifti2dicom_original_scale(
 
         # specify transfer syntax to assign pixel data
         ds.file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian
-        
+
         # assign values for a color DICOM instead of a grayscale
         ds.PhotometricInterpretation = "MONOCHROME2"
         ds.SamplesPerPixel = 1
@@ -259,20 +272,21 @@ def nifti2dicom_original_scale(
         ds.HighBit = 15
         ds.PixelRepresentation = 1
 
-        ds.is_little_endian=True
-        ds.is_implicit_VR=False
+        ds.is_little_endian = True
+        ds.is_implicit_VR = False
 
-        ds.add_new(0x00280006, 'US', 0)
-        ds.fix_meta_info()   
+        ds.add_new(0x00280006, "US", 0)
+        ds.fix_meta_info()
 
         # copy the array containing the masked slice image to pixel data
         ds.PixelData = scaled_slice.tobytes()
         ds.ImageType = "DERIVED\\SECONDARY"
-        
+
         output_filename = (Path(output_dir) / f"{output_prefix}_{i + 1}").with_suffix(
             ".dcm"
         )
         ds.save_as(output_filename)
+    logging.debug(f"Finished converting {output_prefix}")
 
 
 def masked2dicom(
@@ -302,88 +316,168 @@ def masked2dicom(
         DICOM file with the modality overlapped by the tumor segmentation mask.
 
     """
-    #TODO: need to add function to calculate mean ADC if modality = diffusion 
+    # TODO: need to add function to calculate mean ADC if modality = diffusion
     mask_array = nib.load(mask_path).get_fdata()
     background_array = nib.load(background_file).get_fdata()
     dicom_file = pydicom.dcmread(dicom_path)
-    output_prefix = "masked_"+ modality
+    output_prefix = "masked_" + modality
 
-    if modality=='diffusion' or modality=='perfusion':
-        #background_array[:]=1
-        tumor_stats["enhancing portion"]= round(np.average(background_array, weights=(mask_array == mask_values.ENHANCING_TUMOR.value) & (background_array > 0)),3)
-        tumor_stats["total vasogenic edema volume"]= round(np.average(background_array, weights=(mask_array == mask_values.WHOLE_TUMOR.value) & (background_array > 0)),3)
-        tumor_stats["non enhancing portion"]= round(np.average(background_array, weights=(mask_array == mask_values.TUMOR_CORE.value) & (background_array > 0)),3)
+    if modality == "diffusion" or modality == "perfusion":
+        logging.info(f"Calculating stats for masked {modality}...")
 
-        # tumor_stats["enhancing portion"]= round(np.sum(background_array, where=(mask_array == mask_values.ENHANCING_TUMOR.value) & (background_array > 0)),3)
-        # tumor_stats["total vasogenic edema volume"]= round(np.sum(background_array, where=(mask_array == mask_values.WHOLE_TUMOR.value) & (background_array > 0)),3)
-        # tumor_stats["non enhancing portion"]= round(np.sum(background_array, where=(mask_array == mask_values.TUMOR_CORE.value) & (background_array > 0)),3)
+        # --- MODIFIED BLOCK TO PREVENT ZeroDivisionError ---
+        # We must check if any voxels match our criteria before averaging.
 
-        # tumor_stats["enhancing portion"]= round(np.mean(background_array[(mask_array == mask_values.ENHANCING_TUMOR.value) & (background_array > 0)]),3)
-        # tumor_stats["total vasogenic edema volume"]= round(np.mean(background_array[(mask_array == mask_values.WHOLE_TUMOR.value) & (background_array > 0)]),3)
-        # tumor_stats["non enhancing portion"]= round(np.mean(background_array[(mask_array == mask_values.TUMOR_CORE.value) & (background_array > 0)]),3)
-        if modality=='diffusion':
-            tumor_stats["unit"]= "1e-3mm2/s"
-        if modality=='perfusion':
-            tumor_stats["unit"]= "ml/100ml"
-        print("---")
-        print(modality)
-        print(tumor_stats)
-        # background_array = nib.load(background_file).get_fdata()
+        # 1. Enhancing Portion
+        enhancing_weights = (
+            mask_array == mask_values.ENHANCING_TUMOR.value
+        ) & (background_array > 0)
+        if np.sum(enhancing_weights) > 0:
+            tumor_stats["enhancing portion"] = round(
+                np.average(
+                    background_array,
+                    weights=enhancing_weights,
+                ),
+                3,
+            )
+        else:
+            tumor_stats["enhancing portion"] = 0.0
+            logging.info(
+                f"[{modality}] No enhancing tumor voxels found with background > 0. Assigning 0.0."
+            )
+
+        # 2. Total Vasogenic Edema Volume
+        whole_tumor_weights = (mask_array == mask_values.WHOLE_TUMOR.value) & (
+            background_array > 0
+        )
+        if np.sum(whole_tumor_weights) > 0:
+            tumor_stats["total vasogenic edema volume"] = round(
+                np.average(
+                    background_array,
+                    weights=whole_tumor_weights,
+                ),
+                3,
+            )
+        else:
+            tumor_stats["total vasogenic edema volume"] = 0.0
+            logging.info(
+                f"[{modality}] No whole tumor (edema) voxels found with background > 0. Assigning 0.0."
+            )
+
+        # 3. Non Enhancing Portion
+        tumor_core_weights = (mask_array == mask_values.TUMOR_CORE.value) & (
+            background_array > 0
+        )
+        if np.sum(tumor_core_weights) > 0:
+            tumor_stats["non enhancing portion"] = round(
+                np.average(
+                    background_array,
+                    weights=tumor_core_weights,
+                ),
+                3,
+            )
+        else:
+            tumor_stats["non enhancing portion"] = 0.0
+            logging.info(
+                f"[{modality}] No non-enhancing (tumor core) voxels found with background > 0. Assigning 0.0."
+            )
+
+        # --- END MODIFIED BLOCK ---
+
+        if modality == "diffusion":
+            tumor_stats["unit"] = "1e-3mm2/s"
+        if modality == "perfusion":
+            tumor_stats["unit"] = "ml/100ml"
+
+        logging.debug(f"Tumor stats for {modality}: {tumor_stats}")
 
         # generate a CSV spreadsheet with the values of the ADC or rCBV maps from each voxel in the segmentation
         # 1. Enhancing Portion
         enhancing_data = []
-        enhancing_tumor_mask = (mask_array == mask_values.ENHANCING_TUMOR.value) & (background_array > 0)
+        # This mask definition is the same as 'enhancing_weights' above
+        enhancing_tumor_mask = (
+            mask_array == mask_values.ENHANCING_TUMOR.value
+        ) & (background_array > 0)
         if np.any(enhancing_tumor_mask):
             # Get the indices (coordinates) where the mask is True
             x_coords, y_coords, z_coords = np.where(enhancing_tumor_mask)
             for i in range(len(z_coords)):
                 z, y, x = z_coords[i], y_coords[i], x_coords[i]
                 voxel_value = background_array[x, y, z]
-                enhancing_data.append({'x': x, 'y': y, 'z': z, 'Voxel_Value': voxel_value})
+                enhancing_data.append(
+                    {"x": x, "y": y, "z": z, "Voxel_Value": voxel_value}
+                )
             # Save to CSV
-            output_file_path = os.path.join(output_dir, f"{modality}_enhancing_portion_voxels.csv")
+            output_file_path = os.path.join(
+                output_dir, f"{modality}_enhancing_portion_voxels.csv"
+            )
             df_enhancing = pd.DataFrame(enhancing_data)
             df_enhancing.to_csv(output_file_path, index=False)
-            print(f"Saved {len(enhancing_data)} enhancing tumor voxel values to {modality}_enhancing_portion_voxels.csv")
+            logging.info(
+                f"Saved {len(enhancing_data)} enhancing tumor voxel values to {output_file_path}"
+            )
         else:
-            print(f"No Enhancing Portion voxels found for {modality}. Skipping file creation.")
+            logging.info(
+                f"No Enhancing Portion voxels found for {modality}. Skipping file creation."
+            )
 
         # 2. Total Vasogenic Edema Volume
         whole_tumor_data = []
-        whole_tumor_mask = (mask_array == mask_values.WHOLE_TUMOR.value) & (background_array > 0)
+        # This mask definition is the same as 'whole_tumor_weights' above
+        whole_tumor_mask = (mask_array == mask_values.WHOLE_TUMOR.value) & (
+            background_array > 0
+        )
         if np.any(whole_tumor_mask):
-        # Get the indices (coordinates) where the mask is True
+            # Get the indices (coordinates) where the mask is True
             x_coords, y_coords, z_coords = np.where(whole_tumor_mask)
             for i in range(len(z_coords)):
                 z, y, x = z_coords[i], y_coords[i], x_coords[i]
                 voxel_value = background_array[x, y, z]
-                whole_tumor_data.append({'x': x, 'y': y, 'z': z, 'Voxel_Value': voxel_value})
+                whole_tumor_data.append(
+                    {"x": x, "y": y, "z": z, "Voxel_Value": voxel_value}
+                )
             # Save to CSV
-            output_file_path = os.path.join(output_dir, f"{modality}_whole_tumor_voxels.csv")
+            output_file_path = os.path.join(
+                output_dir, f"{modality}_whole_tumor_voxels.csv"
+            )
             df_whole_tumor = pd.DataFrame(whole_tumor_data)
             df_whole_tumor.to_csv(output_file_path, index=False)
-            print(f"Saved {len(whole_tumor_data)} whole tumor voxel values to {modality}_whole_tumor_voxels.csv")
+            logging.info(
+                f"Saved {len(whole_tumor_data)} whole tumor voxel values to {output_file_path}"
+            )
         else:
-            print(f"No Total Vasogenic Edema Volume voxels found for {modality}. Skipping file creation.")
+            logging.info(
+                f"No Total Vasogenic Edema Volume voxels found for {modality}. Skipping file creation."
+            )
 
         # 3. Non-Enhancing Portion
         non_enhancing_data = []
-        tumor_core_mask = (mask_array == mask_values.TUMOR_CORE.value) & (background_array > 0)
+        # This mask definition is the same as 'tumor_core_weights' above
+        tumor_core_mask = (mask_array == mask_values.TUMOR_CORE.value) & (
+            background_array > 0
+        )
         if np.any(tumor_core_mask):
             # Get the indices (coordinates) where the mask is True
             x_coords, y_coords, z_coords = np.where(tumor_core_mask)
             for i in range(len(z_coords)):
                 z, y, x = z_coords[i], y_coords[i], x_coords[i]
                 voxel_value = background_array[x, y, z]
-                non_enhancing_data.append({'x': x, 'y': y, 'z': z, 'Voxel_Value': voxel_value})
+                non_enhancing_data.append(
+                    {"x": x, "y": y, "z": z, "Voxel_Value": voxel_value}
+                )
             # Save to CSV
-            output_file_path = os.path.join(output_dir, f"{modality}_non_enhancing_portion_voxels.csv")
+            output_file_path = os.path.join(
+                output_dir, f"{modality}_non_enhancing_portion_voxels.csv"
+            )
             df_non_enhancing = pd.DataFrame(non_enhancing_data)
             df_non_enhancing.to_csv(output_file_path, index=False)
-            print(f"Saved {len(non_enhancing_data)} non-enhancing tumor voxel values to {modality}_non_enhancing_portion_voxels.csv")
+            logging.info(
+                f"Saved {len(non_enhancing_data)} non-enhancing tumor voxel values to {output_file_path}"
+            )
         else:
-            print(f"No Non-Enhancing Portion voxels found for {modality}. Skipping file creation.")
+            logging.info(
+                f"No Non-Enhancing Portion voxels found for {modality}. Skipping file creation."
+            )
 
     # reorient arrays to save DICOM slices in AXIAL orientation
     mask_array = np.rot90(mask_array, axes=(0, 2))
@@ -411,11 +505,8 @@ def masked2dicom(
             ".dcm"
         )
         output_dicom_file.save_as(output_filename)
-        #p = Path(output_filename)
-        #p.chmod(p.stat().st_mode | stat.S_IROTH | stat.S_IXOTH | stat.S_IWOTH)
-    
-    return stats_dict
 
+    return stats_dict
 
 def merge3D_mask_arr(
     mask_arr: np.ndarray,
@@ -441,11 +532,6 @@ def merge3D_mask_arr(
         f"Number of slices in the segmentation mask ({len_mask}) has to be the same as the number of slices "
         f"in the background file ({len_background})"
     )
-
-    # print("DEBUG --")
-    # print(f"Vaso    = {np.count_nonzero(mask_arr==2)}")
-    # print(f"Enhance = {np.count_nonzero(mask_arr==4)}")
-    # print(f"Non-Enh = {np.count_nonzero(mask_arr==1)}")
 
     for i in range(mask_arr.shape[0]):
         yield merge2D_mask_arr(
@@ -486,7 +572,9 @@ def merge2D_mask_arr(
     mask_rgb_pil = Image.fromarray(mask_rgb)
 
     # Normalize background array
-    background_arr = normalize_background_arr(background_arr, background_arr.min(), background_arr.max())
+    background_arr = normalize_background_arr(
+        background_arr, background_arr.min(), background_arr.max()
+    )
     background_arr_pil = Image.fromarray(background_arr).convert("RGB")
 
     # Merge mask and background
@@ -508,7 +596,9 @@ def merge2D_mask_arr(
     return merged_with_overlay
 
 
-def normalize_background_arr(background_arr: np.ndarray, arr_min: int, arr_max: int) -> np.ndarray:
+def normalize_background_arr(
+    background_arr: np.ndarray, arr_min: int, arr_max: int
+) -> np.ndarray:
     """Normalizes the background array between 0 and 255.
 
     Args:
@@ -523,17 +613,16 @@ def normalize_background_arr(background_arr: np.ndarray, arr_min: int, arr_max: 
     if np.any(background_arr):
         background_arr = np.where(
             background_arr > 0,
-            (
-                255
-                * (1.0 / arr_max * (background_arr - arr_min))
-            ),
+            (255 * (1.0 / arr_max * (background_arr - arr_min))),
             background_arr,
         )
 
     return background_arr
 
 
-def generate_overlay_arr(tumor_stats: dict, slice_shape: tuple, modality):# -> tuple[dict, np.ndarray]:
+def generate_overlay_arr(
+    tumor_stats: dict, slice_shape: tuple, modality
+):  # -> tuple[dict, np.ndarray]:
     """Bitmaps the volumetric information into a overlay image.
 
     Args:
@@ -547,8 +636,8 @@ def generate_overlay_arr(tumor_stats: dict, slice_shape: tuple, modality):# -> t
     bitmap = np.zeros(shape=(slice_shape[0], slice_shape[1], 3), dtype=np.uint8)
 
     # set text visual specs
-    #font = cv2.FONT_HERSHEY_SIMPLEX
-    #font_scale = 0.3
+    # font = cv2.FONT_HERSHEY_SIMPLEX
+    # font_scale = 0.3
     font = cv2.FONT_HERSHEY_PLAIN
     font_scale = 0.75
     color_blue = (255, 0, 0)
@@ -556,24 +645,24 @@ def generate_overlay_arr(tumor_stats: dict, slice_shape: tuple, modality):# -> t
     color_red = (0, 0, 255)
     color_white = (255, 255, 255)
     thickness = 1
-    #line_type = cv2.LINE_4
+    # line_type = cv2.LINE_4
     line_type = cv2.LINE_AA
 
     # text to display
     research_warning = ["FOR RESEARCH ONLY -", "REFER TO OFFICIAL REPORT"]
     legend_headers = "Volume"
-    if modality =='diffusion':
+    if modality == "diffusion":
         legend_headers = "Mean Diffusion"
-    if modality =='perfusion':
+    if modality == "perfusion":
         legend_headers = "Mean Perfusion"
 
-    stats_d={}
-    if modality =='diffusion' or modality =='perfusion':
+    stats_d = {}
+    if modality == "diffusion" or modality == "perfusion":
         edema_text = (
             "Edema      "
             + str(tumor_stats["total vasogenic edema volume"])
             + " "
-            +tumor_stats["unit"]
+            + tumor_stats["unit"]
         )
         enhancing_text = (
             "Enhancing  "
@@ -610,7 +699,7 @@ def generate_overlay_arr(tumor_stats: dict, slice_shape: tuple, modality):# -> t
     stats_d[f"{modality}_edema"] = edema_text
     stats_d[f"{modality}_enhancing"] = enhancing_text
     stats_d[f"{modality}_non_enhancing"] = non_enhancing_text
-    
+
     # add fixed text (research disclaimer, legend headers) to bitmap
     bitmap = cv2.putText(
         bitmap,
@@ -712,64 +801,126 @@ def postprocess(
 ) -> None:
     """Runs the postprocessing step given a directory with a single NIfTI file.
     """
+    # --- LOGGING ADDED ---
+    logging.info(f"--- Starting postprocessing ---")
+    logging.info(f"NIfTI Dir: {nifti_dir}")
+    logging.info(f"Coreg Dir: {coreg_dir}")
+    logging.info(f"Mask Dir: {mask_dir}")
+    logging.info(f"Output Dir: {output_dir}")
+    logging.info(f"DICOM Source: {dicom_source_file}")
+    logging.debug(f"Initial Tumor Volume: {tumor_volume}")
 
-    mask_path = list(Path(mask_dir).glob("*_whole.nii.gz"))[0]
-    print("starting nifti to dicom")
-    nifti2dicom(
-        mask_path,
-        dicom_source_file,
-        output_dir,
-        "mask",
-    )
+    try:
+        mask_path_glob = list(Path(mask_dir).glob("*_whole.nii.gz"))
+        if not mask_path_glob:
+            logging.error(f"No '*_whole.nii.gz' mask file found in {mask_dir}")
+            return  # Stop processing if no mask
+        
+        mask_path = mask_path_glob[0]
+        logging.info(f"Found mask path: {mask_path}")
 
-    # get list of coregistered files
-    nifti_files = os.listdir(coreg_dir)
-
-    # get list of modalities
-    modalities = []
-    for file in nifti_files:
-        modality = file.split('_')[1]
-        modality = modality.split('.')[0]
-        if modality not in modalities:
-            modalities.append(modality)
-
-    # convert each modality to DICOM
-    for modality in modalities:
-        nifti_file = os.path.join(coreg_dir, f'brain_{modality}.nii.gz')
-        if modality == "diffusion" or modality == "perfusion":
-            nifti2dicom_original_scale(
-            nifti_file,
-            dicom_source_file,
-            output_dir,
-            modality,
-            )   
-        else:
-            nifti2dicom(
-            nifti_file,
-            dicom_source_file,
-            output_dir,
-            modality,
-            )
-
-    # add masks to t1ce and flair
-    all_results={}
-    mask_values = BinaryMasksMSNet
-    for modality in ['t1ce', 'flair','diffusion', 'perfusion']:
-        nifti_file = os.path.join(coreg_dir, f'brain_{modality}.nii.gz')
-        modality_results = masked2dicom(
+        logging.info("Starting nifti to dicom conversion for mask...")
+        nifti2dicom(
             mask_path,
-            nifti_file,
             dicom_source_file,
             output_dir,
-            mask_values,
-            modality,
-            tumor_volume,
+            "mask",
         )
-        all_results.update(modality_results)
+        logging.info("Finished mask conversion.")
 
-    # After the loop, write the cumulative dictionary to a JSON file   
-    output_file_path = os.path.join(output_dir, 'result.json')
-    with open(output_file_path, 'w') as json_file:
-        json.dump(all_results, json_file, indent=4)
+    except Exception as e:
+        logging.exception(f"Error during mask processing: {e}")
+        return  # Stop processing
 
-    print(f"Results have been written to {output_file_path}")
+    try:
+        # get list of coregistered files
+        nifti_files = os.listdir(coreg_dir)
+        logging.info(f"Found {len(nifti_files)} coregistered files in {coreg_dir}")
+
+        # get list of modalities
+        modalities = []
+        for file in nifti_files:
+            try:
+                modality = file.split("_")[1].split(".")[0]
+                if modality not in modalities:
+                    modalities.append(modality)
+            except IndexError:
+                logging.warning(f"Could not parse modality from filename: {file}")
+
+        logging.info(f"Found modalities: {modalities}")
+
+        # convert each modality to DICOM
+        for modality in modalities:
+            logging.info(f"--- Processing modality: {modality} ---")
+            nifti_file = os.path.join(coreg_dir, f"brain_{modality}.nii.gz")
+
+            if not os.path.exists(nifti_file):
+                logging.warning(f"File not found, skipping: {nifti_file}")
+                continue
+
+            try:
+                if modality == "diffusion" or modality == "perfusion":
+                    logging.info(f"Converting {modality} to DICOM (original scale)...")
+                    nifti2dicom_original_scale(
+                        nifti_file,
+                        dicom_source_file,
+                        output_dir,
+                        modality,
+                    )
+                else:
+                    logging.info(f"Converting {modality} to DICOM...")
+                    nifti2dicom(
+                        nifti_file,
+                        dicom_source_file,
+                        output_dir,
+                        modality,
+                    )
+                logging.info(f"Finished converting {modality}.")
+            except Exception as e:
+                logging.exception(f"Error converting modality {modality}: {e}")
+                # Continue to next modality
+
+        logging.info("--- Starting masked DICOM generation ---")
+        all_results = {}
+        mask_values = BinaryMasksMSNet
+        # Loop over modalities to create masked images
+        for modality in ["t1ce", "flair", "diffusion", "perfusion"]:
+            logging.info(f"Generating masked DICOM for: {modality}")
+            nifti_file = os.path.join(coreg_dir, f"brain_{modality}.nii.gz")
+
+            if not os.path.exists(nifti_file):
+                logging.warning(
+                    f"Masked DICOM: File not found, skipping: {nifti_file}"
+                )
+                continue
+
+            try:
+                modality_results = masked2dicom(
+                    mask_path,
+                    nifti_file,
+                    dicom_source_file,
+                    output_dir,
+                    mask_values,
+                    modality,
+                    tumor_volume.copy(), # Pass a copy to avoid mutation issues
+                )
+                all_results.update(modality_results)
+                logging.info(f"Finished generating masked DICOM for {modality}.")
+            except Exception as e:
+                logging.exception(
+                    f"Error generating masked DICOM for {modality}: {e}"
+                )
+                # Continue to next modality
+
+        # After the loop, write the cumulative dictionary to a JSON file
+        output_file_path = os.path.join(output_dir, "result.json")
+        logging.info(f"Writing final results to {output_file_path}")
+        with open(output_file_path, "w") as json_file:
+            json.dump(all_results, json_file, indent=4)
+
+        logging.info(f"Results have been written to {output_file_path}")
+
+    except Exception as e:
+        logging.exception(f"An unexpected error occurred in postprocessing: {e}")
+
+    logging.info("--- Postprocessing finished ---")
