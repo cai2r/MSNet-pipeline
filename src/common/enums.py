@@ -36,8 +36,13 @@ modalities = {
         "SAG_CS_MPRAGE",
         "T1_3D_POST",
         "T1CE",
+        "CS_MPRAGE",
+        "SAG_3D_MPR_1MMiso_gw",
+        "SAG_MPR_ISO",
+        "AX_3D_MPR_ISO",
+        "AX_3D_MPR_ISO_FBH",
     ],
-    "t1": ["AX_T1_PRE", "AX_T1", "T1"],
+    "t1": ["AX_T1_PRE", "AX_T1", "T1", "SAG MPR PRE"],
     "t2": [
         "AX_T2",
         "SAG_T2_SPACE",
@@ -62,6 +67,7 @@ modalities = {
         "AX_FLAIR",
         "FLAIR",
         "FL",
+        "SAG_3D_FLAIR_CS4",
     ],
     "diffusion": [
         "Diffusion_1e-3mm_s",
