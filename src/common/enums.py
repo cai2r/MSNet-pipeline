@@ -51,6 +51,7 @@ modalities = {
         "SAG_3D_T2",
         "Head_AX_PD_T2",
         "T2",
+        "AX T2_FBB",
     ],
     "flair": [
         "SAG_3D_FLAIR",
@@ -89,6 +90,8 @@ modalities = {
         "BRAIN_MAPPING_2mmiso_meso_RMR_ADC",
         "Ax_DIFFUSION",
         "MB2_DIFFUSION",
+        "DIFF_meso_2",
+        "BRAIN_Mapping_meso",
     ],
     "perfusion": ["MR_Perfusion"],
 }
